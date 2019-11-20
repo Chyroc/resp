@@ -198,14 +198,3 @@ func (p *Reply) fixFloat() (float64, error) {
 	}
 	return strconv.ParseFloat(p.str, 64)
 }
-
-func ErrToReply(err error) *Reply {
-	if err != nil {
-		return &Reply{errNotFromReply: err}
-	}
-	return nil
-}
-
-func BytesToReply(bs []byte) *Reply {
-	return &Reply{str: string(bs)}
-}
