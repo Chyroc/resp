@@ -2,11 +2,7 @@ package resp
 
 import (
 	"errors"
-	"strconv"
 )
 
+var ErrUnSupportRespType = errors.New("unsupported redis resp type")
 var ErrKeyNotExist = errors.New("key not exist")
-
-func stringToFloat64(s string) (float64, error) {
-	return strconv.ParseFloat(s, 64)
-}

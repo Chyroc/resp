@@ -8,31 +8,30 @@ import (
 
 // Reply ...
 type Reply struct {
-	errNotFromReply error // 只有run runWithLock 会在这里带有值，其他情况不用判断
-
-	null    bool
-	str     string
-	integer int64
-	replys  []*Reply
+	Err     error // 只有run runWithLock 会在这里带有值，其他情况不用判断
+	Null    bool
+	Str     string
+	Integer int64
+	Replies []*Reply
 }
 
 // String just for test
 func (p *Reply) String() string {
-	if p.errNotFromReply != nil {
-		return fmt.Sprintf("Err: %v", p.errNotFromReply)
+	if p.Err != nil {
+		return fmt.Sprintf("Err: %v", p.Err)
 	}
-	if p.null {
+	if p.Null {
 		return "<nil>"
 	}
-	if p.str != "" {
-		return fmt.Sprintf("<String: %v>", p.str)
+	if p.Str != "" {
+		return fmt.Sprintf("<String: %v>", p.Str)
 	}
-	if p.integer != 0 {
-		return fmt.Sprintf("<Int: %v>", p.integer)
+	if p.Integer != 0 {
+		return fmt.Sprintf("<Int: %v>", p.Integer)
 	}
-	if len(p.replys) > 0 {
+	if len(p.Replies) > 0 {
 		var s []string
-		for _, v := range p.replys {
+		for _, v := range p.Replies {
 			s = append(s, v.String())
 		}
 		return fmt.Sprintf("(List: %s)", strings.Join(s, ", "))
@@ -40,114 +39,106 @@ func (p *Reply) String() string {
 	return "<empty>"
 }
 
-// Integer ...
-func (p *Reply) int() (int, error) {
-	if p.errNotFromReply != nil {
-		return 0, p.errNotFromReply
+func (p *Reply) NullInteger() (int64, error) {
+	if p.Err != nil {
+		return 0, p.Err
+	} else if p.Null {
+		return 0, ErrKeyNotExist
 	}
-	return int(p.integer), nil // TODO int64?
+	return p.Integer, nil
 }
 
-func (p *Reply) string() (NullString, error) {
-	if p.errNotFromReply != nil {
-		return NullString{}, p.errNotFromReply
+func (p *Reply) NullString() (NullString, error) {
+	if p.Err != nil {
+		return NullString{}, p.Err
 	}
-	if p.null {
+	if p.Null {
 		return NullString{}, nil
 	}
 
-	return NullString{String: p.str, Valid: true}, nil
+	return NullString{String: p.Str, Valid: true}, nil
 }
 
-func (p *Reply) fixBool() (bool, error) {
-	if p.errNotFromReply == nil {
-		return p.integer == 1, nil
+func (p *Reply) Bool() (bool, error) {
+	if p.Err == nil {
+		return p.Integer == 1, nil
 	}
-	return false, p.errNotFromReply
+	return false, p.Err
 }
 
-func (p *Reply) fixNilInt() (int, error) {
-	if p.errNotFromReply != nil {
-		return 0, p.errNotFromReply
-	} else if p.null {
-		return 0, ErrKeyNotExist
+func (p *Reply) Float64() (float64, error) {
+	if p.Err != nil {
+		return 0, p.Err
 	}
-	return int(p.integer), nil
+	return strconv.ParseFloat(p.Str, 64)
 }
 
-func (p *Reply) fixFloat64() (float64, error) {
-	if p.errNotFromReply != nil {
-		return 0, p.errNotFromReply
-	}
-	return strconv.ParseFloat(p.str, 10)
-}
-
-func (p *Reply) fixNullStringSlice() ([]NullString, error) {
-	if p.errNotFromReply != nil {
-		return nil, p.errNotFromReply
+func (p *Reply) NullStringSlice() ([]NullString, error) {
+	if p.Err != nil {
+		return nil, p.Err
 	}
 
 	var ns []NullString
-	for _, v := range p.replys {
-		if v.errNotFromReply != nil {
-			return nil, v.errNotFromReply // TODO 这里真的有error吗
+	for _, v := range p.Replies {
+		if v.Err != nil {
+			return nil, v.Err // TODO 这里真的有error吗
 		}
-		n, _ := v.string()
+		n, _ := v.NullString()
 		ns = append(ns, n)
 	}
 	return ns, nil
 }
 
-func (p *Reply) fixStringSlice() ([]string, error) {
-	if p.errNotFromReply != nil {
-		return nil, p.errNotFromReply
+func (p *Reply) StringSlice() ([]string, error) {
+	if p.Err != nil {
+		return nil, p.Err
 	}
 
 	var s []string
-	for _, v := range p.replys {
-		if v.errNotFromReply != nil {
-			return nil, v.errNotFromReply // TODO 真的有吗
+	for _, v := range p.Replies {
+		if v.Err != nil {
+			return nil, v.Err // TODO 真的有吗
 		}
-		s = append(s, v.str)
+		s = append(s, v.Str)
 	}
 	return s, nil
 }
 
-func (p *Reply) fixMap() (map[string]string, error) {
-	if p.errNotFromReply != nil {
-		return nil, p.errNotFromReply
+func (p *Reply) Map() (map[string]string, error) {
+	if p.Err != nil {
+		return nil, p.Err
 	}
 
 	var s = make(map[string]string)
-	for i := 0; i < len(p.replys); i += 2 {
-		if p.replys[i].errNotFromReply != nil {
-			return nil, p.replys[i].errNotFromReply // TODO 真的有吗
+	for i := 0; i+1 < len(p.Replies); i += 2 {
+		if p.Replies[i].Err != nil {
+			return nil, p.Replies[i].Err // TODO 真的有吗
 		}
-		if p.replys[i+1].errNotFromReply != nil {
-			return nil, p.replys[i+1].errNotFromReply // TODO 真的有吗
+		if p.Replies[i+1].Err != nil {
+			return nil, p.Replies[i+1].Err // TODO 真的有吗
 		}
-		s[p.replys[i].str] = p.replys[i+1].str
+		s[p.Replies[i].Str] = p.Replies[i+1].Str
 	}
 	return s, nil
 }
 
-func (p *Reply) fixGeoLocationSlice() ([]*GeoLocation, error) {
-	if p.errNotFromReply != nil {
-		return nil, p.errNotFromReply
+func (p *Reply) GeoLocationSlice() ([]*GeoLocation, error) {
+	if p.Err != nil {
+		return nil, p.Err
 	}
 	var ss []*GeoLocation
-	for _, v := range p.replys {
-		if v.errNotFromReply != nil {
-			return nil, v.errNotFromReply
+	for _, v := range p.Replies {
+		if v.Err != nil {
+			return nil, v.Err
 		}
-		if len(v.replys) < 2 {
+		if len(v.Replies) < 2 {
 			return nil, fmt.Errorf("expect 2 string to parse to geo")
 		}
-		longitude, err := stringToFloat64(v.replys[0].str)
+		longitude, err := strconv.ParseFloat(v.Replies[0].Str, 64)
 		if err != nil {
 			return nil, err
 		}
-		latitude, err := stringToFloat64(v.replys[1].str)
+		latitude, err := strconv.ParseFloat(v.Replies[1].Str, 64)
 		if err != nil {
 			return nil, err
 		}
@@ -156,45 +147,45 @@ func (p *Reply) fixGeoLocationSlice() ([]*GeoLocation, error) {
 	return ss, nil
 }
 
-func (p *Reply) fixSortedSetSlice() ([]*SortedSet, error) {
-	if p.errNotFromReply != nil {
-		return nil, p.errNotFromReply
+func (p *Reply) SortedSetSlice() ([]*SortedSet, error) {
+	if p.Err != nil {
+		return nil, p.Err
 	}
 	var ss []*SortedSet
-	for _, v := range p.replys {
-		if v.errNotFromReply != nil {
-			return nil, v.errNotFromReply
+	for _, v := range p.Replies {
+		if v.Err != nil {
+			return nil, v.Err
 		}
-		ss = append(ss, &SortedSet{Member: v.str})
+		ss = append(ss, &SortedSet{Member: v.Str})
 	}
 	return ss, nil
 }
 
-func (p *Reply) fixSortedSetSliceWithScores() ([]*SortedSet, error) {
-	if p.errNotFromReply != nil {
-		return nil, p.errNotFromReply
+func (p *Reply) SortedSetSliceWithScores() ([]*SortedSet, error) {
+	if p.Err != nil {
+		return nil, p.Err
 	}
 	var ss []*SortedSet
-	for i := 0; i < len(p.replys); i += 2 {
-		if p.replys[i].errNotFromReply != nil {
-			return nil, p.replys[i].errNotFromReply // TODO 真的有吗
+	for i := 0; i+1 < len(p.Replies); i += 2 {
+		if p.Replies[i].Err != nil {
+			return nil, p.Replies[i].Err // TODO 真的有吗
 		}
-		if p.replys[i+1].errNotFromReply != nil {
-			return nil, p.replys[i+1].errNotFromReply // TODO 真的有吗
+		if p.Replies[i+1].Err != nil {
+			return nil, p.Replies[i+1].Err // TODO 真的有吗
 		}
-		score, err := strconv.Atoi(p.replys[i+1].str)
+		score, err := strconv.ParseFloat(p.Replies[i+1].Str, 64)
 		if err != nil {
 			return nil, err
 		}
-		ss = append(ss, &SortedSet{Member: p.replys[i].str, Score: score})
+		ss = append(ss, &SortedSet{Member: p.Replies[i].Str, Score: score})
 	}
 
 	return ss, nil
 }
 
-func (p *Reply) fixFloat() (float64, error) {
-	if p.errNotFromReply != nil {
-		return 0, p.errNotFromReply
+func (p *Reply) Float() (float64, error) {
+	if p.Err != nil {
+		return 0, p.Err
 	}
-	return strconv.ParseFloat(p.str, 64)
+	return strconv.ParseFloat(p.Str, 64)
 }

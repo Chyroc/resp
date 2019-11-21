@@ -63,7 +63,7 @@ const (
 // SortedSet ...
 type SortedSet struct {
 	Member string
-	Score  int
+	Score  float64
 }
 
 // GeoLocation ...
